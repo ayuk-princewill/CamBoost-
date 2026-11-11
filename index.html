@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CamBoost - Final Shop</title>
+<style>
+body{margin:0;background:#050a14;color:white;font-family:Arial}
+nav{display:flex;justify-content:space-between;padding:12px;background:#070d1f;border-bottom:2px solid #7fff00;align-items:center;flex-wrap:wrap;gap:8px}
+.logo{color:#7fff00;font-weight:900;font-size:22px}
+.btn{background:#7fff00;color:black;padding:10px 14px;border-radius:6px;font-weight:900;border:none;cursor:pointer;margin:2px}
+.btn2{background:#ffcc00;color:black;padding:10px 14px;border-radius:6px;font-weight:900;border:none;cursor:pointer;margin:2px}
+.btnRed{background:#ff4444;color:white;padding:8px 12px;border-radius:6px;border:none;cursor:pointer;margin:2px}
+.card{background:#0a1228;border:1px solid #333;border-radius:10px;padding:15px;margin:10px}
+input,select{width:100%;padding:12px;margin:6px 0;border-radius:6px;border:1px solid #333;background:#111;color:white;box-sizing:border-box}
+.adminBar{background:#ffcc00;color:black;text-align:center;padding:8px;font-weight:900;display:none}
+.stat{display:inline-block;background:#111;padding:12px;border-radius:8px;margin:5px;min-width:105px;text-align:center;border:1px solid #7fff00}
+.prodImg{width:100%;height:180px;object-fit:cover;border-radius:8px;background:#111}
+.badge{background:#ffcc00;color:black;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:900}
+</style>
+</head>
+<body>
+<div id="adminBar" class="adminBar">👑 ADMIN MODE ON - YOU BUY FREE | <button onclick="logoutAdmin()">Logout Admin</button></div>
+<nav><div class="logo">CamBoost <span style="font-size:12px;color:white">🇨🇲</span></div><div><span id="custNameTop" style="font-size:12px"></span> <button class="btn" onclick="showCustLogin()">My Account</button> <button class="btn" onclick="showAdminLogin()">Admin</button> <button class="btn2" onclick="showCart()">Cart (<span id="cartCount">0</span>)</button></div></nav>
+
+<div style="padding:10px">
+<h2>🛒 Products</h2>
+<input id="searchBox" placeholder="🔍 Search product..." oninput="render()">
+<select id="filterBox" onchange="render()"><option value="all">All Products</option><option value="instock">In Stock Only</option><option value="low">Low Stock</option></select>
+<div id="products"></div>
+
+<div id="custBox" class="card" style="display:none">
+<h3>👤 My Account - Customer Login</h3>
+<input id="custName" placeholder="Your Full Name">
+<input id="custPhone" placeholder="Your Phone e.g 677054956">
+<input id="custTown" placeholder="Your Town e.g Buea">
+<button class="btn" onclick="saveCustomer()">Save My Details</button>
+<p style="font-size:12px;opacity:.7">Admin go use this to contact you for your order.</p>
+</div>
+
+<div id="adminPanel" style="display:none" class="card">
+<h2 style="color:#ffcc00">👑 ADMIN DASHBOARD</h2>
+<div><div class="stat"><b id="statOrders">0</b><br>Orders</div><div class="stat"><b id="statRevenue">0</b><br>Revenue FCFA</div><div class="stat"><b id="statProducts">0</b><br>Products</div><div class="stat"><b id="statCust">0</b><br>Customers</div></div>
+
+<h3>⚙️ Shop Settings</h3>
+<input id="momoNum" placeholder="MoMo Number"><input id="momoName" placeholder="MoMo Name"><input id="waNum" placeholder="WhatsApp e.g 237677054956">
+<button class="btn" onclick="saveSettings()">Save Settings</button>
+
+<h3>🎁 Promo Code</h3>
+<input id="promoCode" placeholder="Code e.g AYUK100"><input id="promoDisc" type="number" placeholder="Discount % e.g 10">
+<button class="btn" onclick="savePromo()">Save Promo</button><p id="promoShow"></p>
+
+<h3>➕ Add / Edit Product + Real Picture</h3>
+<input id="pName" placeholder="Product Name"><input id="pPrice" type="number" placeholder="Price FCFA"><input id="pStock" type="number" placeholder="Stock e.g 20"><input id="pDesc" placeholder="Description">
+<input id="pImgUrl" placeholder="Picture Link - paste image URL">
+<p style="font-size:12px">OR Upload from phone:</p>
+<input type="file" id="pImgFile" accept="image/*" onchange="previewImg(event)">
+<img id="pImgPreview" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;display:none">
+<button class="btn" onclick="addProduct()">Add Product</button><button class="btn2" onclick="saveEdit()">Save Edit</button>
+<p style="font-size:12px;opacity:.7">To Edit: Tap Edit under product, change for here, tap Save Edit</p>
+
+<h3>👥 All Customers</h3><div id="custList"></div>
+<h3>📦 All Orders - With Customer Phone</h3><div id="ordersList"></div>
+<button class="btn" onclick="exportOrders()">Export Orders to WhatsApp</button><button class="btnRed" onclick="clearOrders()">Clear All Orders</button>
+</div>
+
+<div id="cartBox" class="card" style="display:none">
+<h3>Your Cart</h3><div id="cartItems"></div>
+<input id="usePromo" placeholder="Promo Code (optional)"><button class="btn2" onclick="showCart()">Apply Promo</button>
+<h3 id="totalText">Total: 0 FCFA</h3><p id="momoText"></p>
+<button class="btn" onclick="checkout()">Checkout / Pay</button><button class="btn2" onclick="orderWhatsApp()">Order on WhatsApp</button>
+</div>
+
+<div id="loginBox" class="card" style="display:none">
+<h3>🔐 Admin Login</h3><input id="adminPhone" placeholder="Phone: 677054956"><input id="adminPass" type="password" placeholder="Password"><button class="btn" onclick="loginAdmin()">Login as Admin</button>
+</div>
+</div>
+
+<script>
+let products = JSON.parse(localStorage.getItem('cam_products')) || [
+{name:"1GB MTN Data",price:1000,stock:20,desc:"Fast MTN Data - Buea",hidden:false,img:"https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=500"},
+{name:"2GB MTN Data",price:1800,stock:15,desc:"Fast MTN Data - Buea",hidden:false,img:"https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500"},
+{name:"5GB MTN Data",price:4000,stock:10,desc:"Fast MTN Data - Buea",hidden:false,img:"https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=500"}
+];
+let cart=[]; let isAdmin=localStorage.getItem('cam_admin')==='yes';
+let orders=JSON.parse(localStorage.getItem('cam_orders'))||[];
+let customers=JSON.parse(localStorage.getItem('cam_customers'))||[];
+let me=JSON.parse(localStorage.getItem('cam_me'))||null;
+let settings=JSON.parse(localStorage.getItem('cam_settings'))||{momo:"677054956",momoName:"Ayuk",wa:"237677054956"};
+let promo=JSON.parse(localStorage.getItem('cam_promo'))||{code:"",disc:0};
+let editIndex=-1; let tempImg="";
+function saveProducts(){localStorage.setItem('cam_products',JSON.stringify(products));}
+function previewImg(e){let r=new FileReader(); r.onload=function(){tempImg=r.result; let im=document.getElementById('pImgPreview'); im.src=tempImg; im.style.display='block';}; r.readAsDataURL(e.target.files[0]);}
+function render(){
+let q=(document.getElementById('searchBox').value||'').toLowerCase();
+let f=document.getElementById('filterBox').value;
+let html='';
+products.forEach((p,i)=>{
+if(p.hidden && !isAdmin) return;
+if(!p.name.toLowerCase().includes(q)) return;
+if(f==='instock' && p.stock<=0) return;
+if(f==='low' && p.stock>5) return;
+let out=p.stock<=0?'<b style="color:red">OUT OF STOCK</b>':p.stock<=5?`<b style="color:orange">Low Stock: ${p.stock}</b>`:`Stock: ${p.stock}`;
+let img=p.img?`<img src="${p.img}" class="prodImg">`:`<div class="prodImg" style="display:flex;align-items:center;justify-content:center;font-size:40px">📦</div>`;
+html+=`<div class="card">${img}<br><b>${p.name}</b> ${p.hidden?'<span class="badge">HIDDEN</span>':''}<br>${p.desc}<br><b style="color:#7fff00">${p.price} FCFA</b> - ${out}<br><br><button class="btn" onclick="addToCart(${i})" ${p.stock<=0?'disabled':''}>Add to Cart</button> ${isAdmin?`<button class="btn2" onclick="startEdit(${i})">Edit</button><button class="btn2" onclick="toggleHide(${i})">Hide/Show</button><button class="btnRed" onclick="deleteProduct(${i})">Delete</button>`:''}</div>`;
+});
+document.getElementById('products').innerHTML=html||'No products found';
+document.getElementById('adminBar').style.display=isAdmin?'block':'none';
+document.getElementById('adminPanel').style.display=isAdmin?'block':'none';
+document.getElementById('custNameTop').innerText=me?`Hi, ${me.name} 👋`:'';
+document.getElementById('statOrders').innerText=orders.length;
+document.getElementById('statRevenue').innerText=orders.reduce((a,b)=>a+b.total,0);
+document.getElementById('statProducts').innerText=products.length;
+document.getElementById('statCust').innerText=customers.length;
+document.getElementById('momoNum').value=settings.momo; document.getElementById('momoName').value=settings.momoName; document.getElementById('waNum').value=settings.wa;
+document.getElementById('promoShow').innerText=promo.code?`Active Promo: ${promo.code} - ${promo.disc}% OFF`:'No promo active';
+document.getElementById('momoText').innerText=`Pay to MTN MoMo: ${settings.momo} - ${settings.momoName}`;
+document.getElementById('custList').innerHTML=customers.length?customers.map(c=>`<p>👤 <b>${c.name}</b> - 📞 ${c.phone} - ${c.town} <button class="btn2" onclick="window.open('https://wa.me/237${c.phone.replace(/^0+/,'')}')">WhatsApp</button> <button class="btn2" onclick="window.open('tel:${c.phone}')">Call</button></p>`).join(''):'No customers yet';
+renderOrders();
+}
+function showCustLogin(){document.getElementById('custBox').style.display='block'; if(me){document.getElementById('custName').value=me.name; document.getElementById('custPhone').value=me.phone; document.getElementById('custTown').value=me.town;}}
+function saveCustomer(){let n=document.getElementById('custName').value.trim(); let ph=document.getElementById('custPhone').value.trim(); let t=document.getElementById('custTown').value.trim(); if(!n||!ph) return alert('Fill name & phone'); me={name:n,phone:ph,town:t}; localStorage.setItem('cam_me',JSON.stringify(me)); if(!customers.find(c=>c.phone===ph)) customers.push(me); localStorage.setItem('cam_customers',JSON.stringify(customers)); alert('Welcome '+n+'!'); render();}
+function addToCart(i){if(products[i].stock<=0) return alert('Out of stock'); cart.push(products[i]); document.getElementById('cartCount').innerText=cart.length; alert('Added!');}
+function showCart(){document.getElementById('cartBox').style.display='block'; let total=0; let h=''; cart.forEach(c=>{total+=c.price; h+=`<p>${c.name} - ${c.price} FCFA</p>`;}); let code=document.getElementById('usePromo').value.trim().toUpperCase(); let disc=0; if(code===promo.code && promo.code){disc=Math.floor(total*promo.disc/100); total-=disc; h+=`<p>Promo ${code}: -${disc} FCFA</p>`;} if(isAdmin){total=0; h+=`<p style="color:#ffcc00"><b>👑 ADMIN FREE - 0 FCFA</b></p>`;} document.getElementById('cartItems').innerHTML=h||'Cart empty'; document.getElementById('totalText').innerText='Total: '+total+' FCFA';}
+function checkout(){if(!cart.length) return alert('Cart empty'); if(!me && !isAdmin){alert('First create your account - Name + Phone'); showCustLogin(); return;} let total=isAdmin?0:cart.reduce((a,b)=>a+b.price,0); cart.forEach(c=>{let p=products.find(x=>x.name===c.name); if(p) p.stock--;}); let cust=isAdmin?{name:'ADMIN',phone:'677054956',town:'Buea'}:me; orders.push({items:cart.map(c=>c.name).join(', '),total:total,admin:isAdmin,status:'Pending',date:new Date().toLocaleString(),custName:cust.name,custPhone:cust.phone,custTown:cust.town}); localStorage.setItem('cam_orders',JSON.stringify(orders)); saveProducts(); if(isAdmin) alert('👑 ADMIN ORDER SUCCESS - FREE!'); else alert('Order saved! Pay '+total+' FCFA to MoMo '+settings.momo+' then send screenshot on WhatsApp'); cart=[]; document.getElementById('cartCount').innerText=0; render();}
+function orderWhatsApp(){let msg=encodeURIComponent('Hello CamBoost, I am '+(me?me.name:'')+' ('+(me?me.phone:'')+'), I want: '+cart.map(c=>c.name).join(', ')); window.open('https://wa.me/'+settings.wa+'?text='+msg);}
+function showAdminLogin(){document.getElementById('loginBox').style.display='block';}
+function loginAdmin(){if(document.getElementById('adminPhone').value.trim()==='677054956' && document.getElementById('adminPass').value.trim()==='ayuk237$'){isAdmin=true; localStorage.setItem('cam_admin','yes'); alert('Welcome Admin 👑'); render();} else alert('Wrong admin login');}
+function logoutAdmin(){isAdmin=false; localStorage.removeItem('cam_admin'); render(); alert('Logged out');}
+function addProduct(){let n=document.getElementById('pName').value; let pr=parseInt(document.getElementById('pPrice').value); let st=parseInt(document.getElementById('pStock').value)||10; let d=document.getElementById('pDesc').value; let imgUrl=document.getElementById('pImgUrl').value.trim(); if(!n||!pr) return alert('Fill name & price'); products.push({name:n,price:pr,stock:st,desc:d,hidden:false,img:tempImg||imgUrl||""}); saveProducts(); render(); alert('Product Added!'); tempImg=""; document.getElementById('pImgPreview').style.display='none';}
+function startEdit(i){editIndex=i; document.getElementById('pName').value=products[i].name; document.getElementById('pPrice').value=products[i].price; document.getElementById('pStock').value=products[i].stock; document.getElementById('pDesc').value=products[i].desc; document.getElementById('pImgUrl').value=products[i].img||''; alert('Edit for top, tap Save Edit'); window.scrollTo(0,300);}
+function saveEdit(){if(editIndex<0) return alert('Tap Edit first'); products[editIndex]={...products[editIndex],name:document.getElementById('pName').value,price:parseInt(document.getElementById('pPrice').value),stock:parseInt(document.getElementById('pStock').value),desc:document.getElementById('pDesc').value,img:tempImg||document.getElementById('pImgUrl').value}; saveProducts(); render(); alert('Updated!'); editIndex=-1; tempImg="";}
+function deleteProduct(i){if(confirm('Delete this product?')){products.splice(i,1); saveProducts(); render();}}
+function toggleHide(i){products[i].hidden=!products[i].hidden; saveProducts(); render();}
+function saveSettings(){settings={momo:document.getElementById('momoNum').value,momoName:document.getElementById('momoName').value,wa:document.getElementById('waNum').value}; localStorage.setItem('cam_settings',JSON.stringify(settings)); render(); alert('Settings saved!');}
+function savePromo(){promo={code:document.getElementById('promoCode').value.trim().toUpperCase(),disc:parseInt(document.getElementById('promoDisc').value)||0}; localStorage.setItem('cam_promo',JSON.stringify(promo)); render(); alert('Promo saved!');}
+function renderOrders(){let h=orders.length?orders.map((o,i)=>`<div class="card"><p><b>${o.custName||'Unknown'}</b> - 📞 ${o.custPhone||''} - ${o.custTown||''}<br>${o.date}<br>${o.items}<br><b>${o.total} FCFA</b> - ${o.status} ${o.admin?'(ADMIN FREE)':''}</p><button class="btn2" onclick="window.open('https://wa.me/237${(o.custPhone||'').replace(/^0+/,'')}')">WhatsApp Customer</button><button class="btn2" onclick="window.open('tel:${o.custPhone}')">Call</button><button class="btn" onclick="markDelivered(${i})">Mark Delivered</button><button class="btnRed" onclick="delOrder(${i})">Delete Order</button></div>`).join(''):'No orders yet'; document.getElementById('ordersList').innerHTML=h;}
+function markDelivered(i){orders[i].status='Delivered'; localStorage.setItem('cam_orders',JSON.stringify(orders)); render();}
+function delOrder(i){orders.splice(i,1); localStorage.setItem('cam_orders',JSON.stringify(orders)); render();}
+function clearOrders(){if(confirm('Clear all orders?')){orders=[]; localStorage.removeItem('cam_orders'); render();}}
+function exportOrders(){let txt=encodeURIComponent('CamBoost Orders:\n'+orders.map(o=>`${o.date} - ${o.custName} ${o.custPhone} - ${o.items} - ${o.total} FCFA - ${o.status}`).join('\n')); window.open('https://wa.me/'+settings.wa+'?text='+txt);}
+render();
+</script>
+</body>
+</html>
